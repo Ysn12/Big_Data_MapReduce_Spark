@@ -1,4 +1,4 @@
-package pg1;
+package files;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,17 +18,17 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.Mapper;
 
 
-public class Sentiment_analys_MR {
+public class Topic_Detection_MR {
 	
 	 public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException  {
 		 
 		Configuration	conf	= new	Configuration();	
-		Job job = Job.getInstance(conf,"Sentiment_analys_MR");
-		job.setJarByClass(Sentiment_analys_MR.class);
+		Job job = Job.getInstance(conf,"Topic_Detection_MR");
+		job.setJarByClass(Topic_Detection_MR.class);
 		job.setOutputKeyClass(Object.class);
 		job.setOutputValueClass(IntWritable.class);
-		job.setMapperClass(sentiment_analys_Mapper.class);
-		job.setReducerClass(sentiment_analys_Reducer.class);
+		job.setMapperClass(Exercice4_Mapper.class);
+		job.setReducerClass(Exercice4_Reducer.class);
 		job.setMapOutputKeyClass(Text.class);
 		job.setMapOutputValueClass(IntWritable.class);
 		FileInputFormat.addInputPath(job, new Path(args[0]));
@@ -36,21 +36,21 @@ public class Sentiment_analys_MR {
 		System.exit(job.waitForCompletion(true)	?	0	:	1);	;
 		}
 
-public static class sentiment_analys_Mapper extends Mapper<Object, Text, Text, IntWritable>{
+public static class Exercice4_Mapper extends Mapper<Object, Text, Text, IntWritable>{
 	
 	// les variables word et one seront la sortie de la methode map(), word comme clé et one comme valeur
 	private	Text word= new Text();
 	private	final IntWritable one= new IntWritable(1);					
 	
-	 // on définit les chemins des trois fichiers
-	 Path negative_words_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/tweets/input/negative-words.txt");
-	 Path positive_words_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/tweets/input/positive-words.txt");
-	 Path stop_words_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/tweets/input/stop-words.txt");
+	 // on définit les chemins des topics
+	 Path economic_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/topicDetection/topics/economic.txt");
+	 Path politics_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/topicDetection/topics/politics.txt");
+	 Path social_path=new Path("hdfs://quickstart.cloudera:8020/user/cloudera/ateliers/atelier2/topicDetection/topics/social.txt");
 	 
-	 // les listes qui vont stocker les mots des fichier (negative_word, positive_words et stop_words)
-	 List<String> str_negative_words= new ArrayList<String>();
-	 List<String> str_positive_words= new ArrayList<String>();
-	 List<String> str_stop_words= new ArrayList<String>();
+	 // les listes qui vont stocker les mots des topics
+	 List<String> str_ls_economic= new ArrayList<String>();
+	 List<String> str_ls_politics= new ArrayList<String>();
+	 List<String> str_ls_social= new ArrayList<String>();
 	
 	 
 	// on redéfinir la methode setup() pour exécuter le code qui doit etre excuter une seul fois
@@ -62,56 +62,55 @@ public static class sentiment_analys_Mapper extends Mapper<Object, Text, Text, I
 		    conf.addResource(new Path("/etc/hadoop/conf/hdfs-site.xml"));
 		    FileSystem fs = FileSystem.get(conf);
 		    
-		    BufferedReader br_negative_words= new BufferedReader(new InputStreamReader(fs.open(negative_words_path)));
-		    BufferedReader br_positive_words= new BufferedReader(new InputStreamReader(fs.open(positive_words_path)));
-		    BufferedReader br_stop_words= new BufferedReader(new InputStreamReader(fs.open(stop_words_path)));
+		    BufferedReader br_economic= new BufferedReader(new InputStreamReader(fs.open(economic_path)));
+		    BufferedReader br_politics= new BufferedReader(new InputStreamReader(fs.open(politics_path)));
+		    BufferedReader br_social= new BufferedReader(new InputStreamReader(fs.open(social_path)));
 		    
 		    
 		    // On stocke les mots de chaque topic dans un ArrayList pour faire la comparaison après
 		    String line;
-		    line= br_negative_words.readLine();
+		    line= br_economic.readLine();
 		    while (line != null){
-		    	str_negative_words.add(line);
-		        line=br_negative_words.readLine();
+		    	str_ls_economic.add(line);
+		        line=br_economic.readLine();
 		    }
-		    line= br_positive_words.readLine();
+		    line= br_politics.readLine();
 		    while (line != null){
-		    	str_positive_words.add(line);
-		        line=br_positive_words.readLine();
+		    	str_ls_politics.add(line);
+		        line=br_politics.readLine();
 		    }
-		    line= br_stop_words.readLine();
+		    line= br_social.readLine();
 		    while (line != null){
-		    	str_stop_words.add(line);
-		        line=br_stop_words.readLine();
+		    	str_ls_social.add(line);
+		        line=br_social.readLine();
 		    }
 }
 	
-	// la methode map() qui prend comme entré la ligne du text speetch et comme sortie (topic, 1) [ topic == negative || positive || stop ]
+	// la methode map() qui prend comme entré la ligne du text speetch et comme sortie (topic, 1) [ topic == econimic || politic || social ]
 	public void map(Object key, Text value, Context context) throws IOException, InterruptedException{
 		
-		// on utilise la methode split() qui nous permet de casser un string en mots
+		// // on utilise la methode split() qui nous permet de casser un string en mots
 		String line = value.toString();
 		List<String> speechWords= Arrays.asList(line.replaceAll("[.,-:;\"]", "").split(" "));
 		
 		for(String speechWord: speechWords){
-			
-			// Maintenant on fait la comparaison et si on trouve un mot negatif on declare comme sortie ("Negative", 1)
+			// Maintenant on fait la comparaison et si on trouve un mot econimique on declare comme sortie ("economic", 1)
 			// sinon on passe à l'autre boucle
-			for(String str: str_negative_words ){
+			for(String str: str_ls_economic ){
 				if(speechWord.equalsIgnoreCase(str)){
-					word.set("Negative");
+					word.set("economic");
 					context.write(word, one);
 				}
 			}
-			for(String str: str_positive_words ){
+			for(String str: str_ls_politics ){
 				if(speechWord.equalsIgnoreCase(str)){
-					word.set("Positive");
+					word.set("politic");
 					context.write(word, one);
 				}
 			}
-			for(String str: str_stop_words ){
+			for(String str: str_ls_social ){
 				if(speechWord.equalsIgnoreCase(str)){
-					word.set("Stop");
+					word.set("social");
 					context.write(word, one);
 				}
 			}
@@ -121,8 +120,8 @@ public static class sentiment_analys_Mapper extends Mapper<Object, Text, Text, I
 	}
 }
 
-// Après la phase de sorting and shuffling la methode reduce() prend comme entré (clé, valeur), le sentiment comme clé et liste des valeur 1 comme valeur
-public static class sentiment_analys_Reducer extends Reducer<Text, IntWritable, Text, IntWritable>{
+// Après la phase de sorting and shuffling la methode reduce() prend comme entré (clé, valeur), le topic comme clé et liste des valeur 1 comme valeur
+public static class Exercice4_Reducer extends Reducer<Text, IntWritable, Text, IntWritable>{
 	private	IntWritable	result	=	new	IntWritable();	
 	public void reduce(Text	key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException{
 		int	sum	=	0;								
